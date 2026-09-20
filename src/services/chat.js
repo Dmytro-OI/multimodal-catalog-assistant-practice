@@ -5,8 +5,9 @@ export const ensureTelegramUser = async (telegramUser) => {
     telegram_user_id: String(telegramUser.id),
     telegram_username: telegramUser.username || null,
     display_name: [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || null,
+    language: 'uk',
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'telegram_user_id' }).select('*').single();
+  }, { onConflict: 'telegram_user_id', ignoreDuplicates: false }).select('*').single();
   if (error) throw error;
   return data;
 };
@@ -35,6 +36,7 @@ export const getRecentHistory = async (userId, limit = 8) => {
   const { data, error } = await supabase.from('assistant_messages')
     .select('sender_type,text,created_at')
     .eq('user_id', userId)
+    .in('sender_type', ['customer', 'assistant', 'manager'])
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
