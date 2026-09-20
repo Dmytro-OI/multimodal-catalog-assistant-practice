@@ -16,6 +16,7 @@ import {
   extractProductCode,
   extractRecentProductCode,
   isCatalogCountRequest,
+  isGreeting,
   isMenuRequest,
   isPhotoAlternativeRequest,
   isPhotoRequest,
@@ -567,7 +568,7 @@ const handleCustomerMessage = async (message) => {
     });
   } else {
     try {
-      reply = await writeReply({ language: user.language, message: text, history });
+      reply = await writeReply({ language: user.language, message: text, history: isGreeting(text) ? '' : history });
     } catch {
       reply = temporaryUnavailableText(user.language);
     }

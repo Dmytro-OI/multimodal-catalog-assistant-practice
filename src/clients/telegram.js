@@ -2,12 +2,7 @@ import { config } from '../config.js';
 
 const apiUrl = (method) => `https://api.telegram.org/bot${config.telegram.token}/${method}`;
 
-export const telegramRequest = async (method, payload = {}) => {
-  const response = await fetch(apiUrl(method), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+const readResult = async (response, method) => {
   const result = await response.json();
   if (!response.ok || !result.ok) {
     const error = new Error(`Telegram ${method} failed: ${result.description || response.statusText}`);
@@ -15,6 +10,15 @@ export const telegramRequest = async (method, payload = {}) => {
     throw error;
   }
   return result.result;
+};
+
+export const telegramRequest = async (method, payload = {}) => {
+  const response = await fetch(apiUrl(method), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return readResult(response, method);
 };
 
 export const sendMessage = (chatId, text, options = {}) => telegramRequest('sendMessage', {
@@ -38,13 +42,32 @@ export const editMessageText = (chatId, messageId, text, options = {}) => telegr
   ...options,
 });
 
-export const sendPhoto = (chatId, photo, caption, options = {}) => telegramRequest('sendPhoto', {
-  chat_id: chatId,
-  photo,
-  caption,
-  parse_mode: 'HTML',
-  ...options,
-});
+export const sendPhoto = async (chatId, photo, caption, options = {}) => {
+  try {
+    return await telegramRequest('sendPhoto', {
+      chat_id: chatId,
+      photo,
+      caption,
+      parse_mode: 'HTML',
+      ...options,
+    });
+  } catch (urlError) {
+    if (typeof photo !== 'string' || !/^https?:\/\//i.test(photo)) throw urlError;
+    const imageResponse = await fetch(photo);
+    if (!imageResponse.ok) throw urlError;
+    const mimeType = imageResponse.headers.get('content-type')?.split(';')[0] || 'image/jpeg';
+    const extension = mimeType.split('/')[1] || 'jpg';
+    const form = new FormData();
+    form.append('chat_id', String(chatId));
+    form.append('caption', caption);
+    form.append('parse_mode', 'HTML');
+    for (const [key, value] of Object.entries(options)) {
+      form.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
+    form.append('photo', new Blob([await imageResponse.arrayBuffer()], { type: mimeType }), `product.${extension}`);
+    return readResult(await fetch(apiUrl('sendPhoto'), { method: 'POST', body: form }), 'sendPhoto');
+  }
+};
 
 export const sendChatAction = (chatId, action) => telegramRequest('sendChatAction', {
   chat_id: chatId,

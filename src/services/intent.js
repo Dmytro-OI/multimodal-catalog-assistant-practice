@@ -13,7 +13,8 @@ const smallTalkPattern = /^(привіт\p{L}*|вітаю|дякую|спаси�
 const availabilityIntentPattern = /^(?:а\s+)?(?:(?:є|маєте|наявн\p{L}*)\s+[\p{L}\d'’_-]+(?:\s+[\p{L}\d'’_-]+){0,5}|[\p{L}\d'’_-]+(?:\s+[\p{L}\d'’_-]+){0,4}\s+є|(?:do\s+you|u)\s+have\s+.+|(?:have|got)\s+(?:anything|something)\s+like\s+.+|any\s+.+)\??$/iu;
 const conversationalCatalogPattern = /(?:^|[,!?]\s*)(?:а\s+)?(?:чи\s+)?(?:у\s+вас\s+)?(?:є|маєте)\s+(?:у\s+вас\s+)?(?:щось|що-небудь|якісь?)\s+(?:з|із|зі|на\s+кшталт)\s+\p{L}+/iu;
 const giftRecipientPattern = /(?:що|шо|щось|який|яку|порад\p{L}*|підбер\p{L}*).{0,60}\sдля\s+[\p{L}\d'’_-]+/iu;
-const preferencePattern = /(любить|подоба\p{L}*|захоплю\p{L}*|цікавить\p{L}*|хобі|likes?|enjoys?|hobb(?:y|ies)|interested\s+in|lubi\p{L}*|interesuje\p{L}*|mag\p{L}*|interessiert\p{L}*)/iu;
+const preferencePattern = /(люб\p{L}*|подоба\p{L}*|захоплю\p{L}*|цікавить\p{L}*|хобі|likes?|enjoys?|hobb(?:y|ies)|interested\s+in|lubi\p{L}*|interesuje\p{L}*|mag\p{L}*|interessiert\p{L}*)/iu;
+const colorPreferencePattern = /(колір|кольор\p{L}*|color|colour|kolor|farbe)/iu;
 const affirmativePattern = /^(?:так|та|давай|добре|гаразд|ок(?:ей)?|авжеж|yes|sure|okay|ok|tak|dobrze|ja|gern)\s*[.!]?$/iu;
 const catalogOfferPattern = /assistant:.*(?:переглянути|подивитися|показати|варіанти|товари|вироби|сувеніри|would\s+you\s+like\s+to\s+(?:see|view)|show\s+you|produkty|wyroby|zobaczyć|produkte|artikel|möchten\s+sie)/iu;
 const photoAlternativePattern = /(ще|інші|инші|другі|наступні|more|other|next|inne|kolejne|weitere|andere)\s+(варіант\p{L}*|фігур\p{L}*|товар\p{L}*|option\p{L}*|product\p{L}*|figur\p{L}*|wariant\p{L}*|produkt\p{L}*|option\p{L}*|artikel\p{L}*)/iu;
@@ -24,6 +25,8 @@ const catalogContextPattern = /(товар\p{L}*|фігур\p{L}*|виріб|в�
 const shortSubjectPattern = /^(?:а\s+)?[\p{L}'’_-]+(?:\s+[\p{L}'’_-]+){0,2}\??$/iu;
 const catalogDetailPattern = /(квіт\p{L}*|тварин\p{L}*|птах\p{L}*|риб\p{L}*|сувенір\p{L}*|декор\p{L}*|син\p{L}*|блакит\p{L}*|червон\p{L}*|зелен\p{L}*|жовт\p{L}*|чорн\p{L}*|біл\p{L}*|темн\p{L}*|світл\p{L}*|велик\p{L}*|мал\p{L}*|міні\p{L}*|flower\p{L}*|animal\p{L}*|bird\p{L}*|fish\p{L}*|souvenir\p{L}*|decor\p{L}*|blue|red|green|yellow|black|white|dark|light|large|small|mini)/iu;
 const contextualReferencePattern = /(цей|ця|це|цієї|цього|так\p{L}*|попередн\p{L}*|this|that|previous|same)/iu;
+const topicResetPattern = /(мене\s+тепер\s+цікав|тепер\s+(?:хочу|шукаю|цікав)|змінимо\s+тему|інш\p{L}*\s+(?:товар|тема)|замість\s+цього|now\s+i\s+(?:want|need|am\s+looking)|change\s+the\s+topic|something\s+different|instead\s+of)/iu;
+const greetingPattern = /^(привіт\p{L}*|вітаю|добрий\s+(?:день|вечір|ранок)|hello|hi|hey|dzień\s+dobry|cześć|hallo|guten\s+(?:tag|morgen|abend))[!,.?\s]*$/iu;
 
 export const extractProductCode = (text = '') => {
   const matches = String(text).match(productCodePattern) || [];
@@ -61,6 +64,8 @@ export const isPhotoAlternativeRequest = (text = '') => photoAlternativePattern.
 
 export const isVisualRefinementRequest = (text = '') => visualRefinementPattern.test(String(text));
 
+export const isGreeting = (text = '') => greetingPattern.test(String(text).trim());
+
 export const normalizeCatalogQuery = (text = '') => {
   const original = String(text).trim().replace(/[?!.,]+$/u, '').trim();
   const normalized = original
@@ -68,6 +73,7 @@ export const normalizeCatalogQuery = (text = '') => {
     .replace(/^(?:а\s+)?(?:чи\s+)?(?:у\s+вас\s+)?(?:є|маєте)\s+(?:у\s+вас\s+)?(?:щось|що-небудь|якісь?)?\s*(?:з|із|зі|на\s+кшталт)?\s*/iu, '')
     .replace(/^(?:порад\p{L}*|підбер\p{L}*|порекоменду\p{L}*|покаж\p{L}*|знайд\p{L}*)\s*/iu, '')
     .replace(/^(?:я\s+)?(?:хочу|хотів(?:ла)?(?:\s+би)?|шукаю|потрібн\p{L}*)\s*/iu, '')
+    .replace(/^(?:мене\s+)?(?:тепер\s+)?(?:цікавить|цікавлять)\s*/iu, '')
     .replace(/^(?:do\s+you\s+have|have\s+you\s+got|show|recommend|suggest|find)\s+(?:anything\s+|something\s+|any\s+)?(?:with|like)?\s*/iu, '')
     .replace(/^(?:а|але)\s+/iu, '')
     .replace(/\s+є$/iu, '')
@@ -75,19 +81,25 @@ export const normalizeCatalogQuery = (text = '') => {
   return normalized.length >= 2 ? normalized : original;
 };
 
-const recentCustomerMessages = (history = '') => String(history)
-  .split('\n')
-  .filter((line) => line.startsWith('customer: '))
-  .map((line) => line.slice('customer: '.length).trim())
-  .filter(Boolean);
+const recentCustomerMessages = (history = '') => {
+  const messages = String(history)
+    .split('\n')
+    .filter((line) => line.startsWith('customer: '))
+    .map((line) => line.slice('customer: '.length).trim())
+    .filter(Boolean);
+  const resetIndex = messages.findLastIndex((message) => topicResetPattern.test(message));
+  return resetIndex < 0 ? messages : messages.slice(resetIndex);
+};
 
 export const buildCatalogQuery = (text = '', history = '') => {
   const current = normalizeCatalogQuery(text);
   const raw = String(text).trim();
+  if (topicResetPattern.test(raw)) return current;
   const needsContext = preferencePattern.test(raw)
+    || colorPreferencePattern.test(raw)
     || affirmativePattern.test(raw)
-    || catalogDetailPattern.test(raw)
-    || contextualReferencePattern.test(raw);
+    || contextualReferencePattern.test(raw)
+    || visualRefinementPattern.test(raw);
   if (!needsContext) return current;
 
   const prior = recentCustomerMessages(history)
