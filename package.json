@@ -1,0 +1,24 @@
+{
+  "name": "catalog-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Telegram bot for catalog search.",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "check": "node --check src/index.js && node --check src/webhooks/telegram.js && node --check src/clients/gemini.js",
+    "enrich": "node scripts/enrich-catalog.js",
+    "index-images": "node scripts/index-catalog-images.js",
+    "set-webhook": "node scripts/set-webhook.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google/genai": "^1.38.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2"
+  }
+}

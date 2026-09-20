@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: catalog-bot
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_IMAGE_BUCKET
+        value: images
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: ADMIN_TELEGRAM_IDS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_FALLBACK_MODELS
+        value: gemini-3.5-flash,gemini-3.6-flash
+      - key: GEMINI_VISION_MODELS
+        value: gemini-3.5-flash-lite,gemini-3.5-flash
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-2
+      - key: EMBEDDING_DIMENSIONS
+        value: 768
+      - key: MATCH_THRESHOLD
+        value: 0.42
+      - key: MATCH_COUNT
+        value: 5
+      - key: ENRICHMENT_BATCH_SIZE
+        value: 5
+      - key: ENRICHMENT_DELAY_MS
+        value: 5000
