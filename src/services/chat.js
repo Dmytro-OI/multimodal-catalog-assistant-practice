@@ -1,11 +1,10 @@
 import { supabase } from '../clients/supabase.js';
 
-export const ensureTelegramUser = async (telegramUser) => {
-  const { data, error } = await supabase.from('assistant_users').upsert({
+export const ensureTelegramUser = async (telegramUser, database = supabase) => {
+  const { data, error } = await database.from('assistant_users').upsert({
     telegram_user_id: String(telegramUser.id),
     telegram_username: telegramUser.username || null,
     display_name: [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || null,
-    language: 'uk',
     updated_at: new Date().toISOString(),
   }, { onConflict: 'telegram_user_id', ignoreDuplicates: false }).select('*').single();
   if (error) throw error;
@@ -32,23 +31,40 @@ export const recordMessage = async ({ userId, telegramChatId, direction, senderT
   if (error) throw error;
 };
 
-export const getRecentHistory = async (userId, limit = 8) => {
+const getLatestSessionStart = async (userId) => {
   const { data, error } = await supabase.from('assistant_messages')
+    .select('created_at')
+    .eq('user_id', userId)
+    .eq('direction', 'system')
+    .eq('text', 'session:start')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.created_at || null;
+};
+
+export const getRecentHistory = async (userId, limit = 8) => {
+  const sessionStartedAt = await getLatestSessionStart(userId);
+  let query = supabase.from('assistant_messages')
     .select('sender_type,text,created_at')
     .eq('user_id', userId)
-    .in('sender_type', ['customer', 'assistant', 'manager'])
-    .order('created_at', { ascending: false })
-    .limit(limit);
+    .in('sender_type', ['customer', 'assistant', 'manager']);
+  if (sessionStartedAt) query = query.gte('created_at', sessionStartedAt);
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return (data || []).reverse().map((item) => `${item.sender_type}: ${item.text}`).join('\n');
 };
 
 export const getRecentPhotoSearchContext = async (userId, maxAgeMs = 30 * 60_000) => {
-  const { data, error } = await supabase.from('assistant_messages')
+  const sessionStartedAt = await getLatestSessionStart(userId);
+  let query = supabase.from('assistant_messages')
     .select('text,created_at')
     .eq('user_id', userId)
     .eq('direction', 'system')
-    .like('text', 'photo-search:%')
+    .like('text', 'photo-search:%');
+  if (sessionStartedAt) query = query.gte('created_at', sessionStartedAt);
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -117,6 +133,17 @@ export const closeOpenSupportRequests = async (userId, telegramChatId) => {
     .select('id');
   if (error) throw error;
   return data || [];
+};
+
+export const startConversationSession = async ({ userId, telegramChatId, language }) => {
+  const closedRequests = await closeOpenSupportRequests(userId, telegramChatId);
+  await recordMessage({
+    userId, telegramChatId, direction: 'system', senderType: 'system', text: 'session:start', language,
+  });
+  await recordMessage({
+    userId, telegramChatId, direction: 'system', senderType: 'system', text: 'mode:chat', language,
+  });
+  return closedRequests;
 };
 
 export const closeSupportRequestById = async (requestId) => {

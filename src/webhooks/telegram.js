@@ -20,6 +20,7 @@ import {
   isMenuRequest,
   isPhotoAlternativeRequest,
   isPhotoRequest,
+  isRecentProductPhotoRequest,
   isPhoneRequest,
   isPriceRequest,
   isSupportRequest,
@@ -41,6 +42,7 @@ import {
   recordMessage,
   recordPhotoSearchContext,
   setUserLanguage,
+  startConversationSession,
 } from '../services/chat.js';
 
 const languageMenu = {
@@ -346,6 +348,14 @@ const handleCustomerMessage = async (message) => {
   }
   if (text === '/start' || text === '/menu' || text === '/help') {
     if (text === '/start') {
+      const closedRequests = await startConversationSession({
+        userId: user.id, telegramChatId: chatId, language: user.language,
+      });
+      for (const request of closedRequests) {
+        for (const adminId of config.telegram.adminIds) {
+          await sendMessage(adminId, `ℹ️ Клієнт почав нову сесію. Звернення #${request.id} завершено.`);
+        }
+      }
       await sendMessage(chatId, languageWelcomeText, { reply_markup: languageMenu });
     } else {
       await sendMessage(chatId, capabilitiesText(user.language), { reply_markup: languageMenu });
@@ -499,7 +509,8 @@ const handleCustomerMessage = async (message) => {
 
   const history = await getRecentHistory(user.id);
   const directProductCode = extractProductCode(text);
-  const productCode = directProductCode || (isPhotoRequest(text) ? extractRecentProductCode(history) : null);
+  const productCode = directProductCode
+    || (isRecentProductPhotoRequest(text) ? extractRecentProductCode(history) : null);
   const exactProduct = productCode ? await catalog.findByExactName(productCode) : null;
 
   if (productCode && isPhotoRequest(text)) {

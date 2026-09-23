@@ -3,6 +3,8 @@ const productCodePattern = /\b[\p{L}\d]{1,16}(?:[-_][\p{L}\d]{1,16})+\b/giu;
 const catalogIntentPattern = /(порад\p{L}*|підбер\p{L}*|знайд\p{L}*|покаж\p{L}*|фігур\p{L}*|товар\p{L}*|виріб|вироби|подар\p{L}*|recommend\p{L}*|suggest\p{L}*|find\p{L}*|show\p{L}*|figur\p{L}*|product\p{L}*|gift\p{L}*|pole\p{L}*|znajd\p{L}*|pokaż\p{L}*|produkt\p{L}*|prezent\p{L}*|empfehl\p{L}*|such\p{L}*|zeig\p{L}*|geschenk\p{L}*)/iu;
 
 const photoIntentPattern = /(фото\p{L}*|фотк\p{L}*|зображенн\p{L}*|покаж\p{L}*|скинь\p{L}*|надішл\p{L}*|вигляда\p{L}*|photo\p{L}*|picture\p{L}*|image\p{L}*|show\p{L}*|send\p{L}*|look\p{L}*|zdję\p{L}*|fot\p{L}*|pokaż\p{L}*|wyślij\p{L}*|bild\p{L}*|foto\p{L}*|zeig\p{L}*|schick\p{L}*|aussieh\p{L}*)/iu;
+const recentProductReferencePattern = /((?<![\p{L}\d_])(?:цей|ця|це|ці|цього|цієї|цю|його|її|того|тієї|this|that|it|its|previous|last|same|jego|jej|sein|ihr)(?![\p{L}\d_])|попередн\p{L}*|останн\p{L}*|poprzedn\p{L}*|dies\p{L}*|vorherig\p{L}*)/iu;
+const barePhotoRequestPattern = /^\s*(?:(?:покаж\p{L}*|скинь\p{L}*|надішл\p{L}*|show|send|pokaż\p{L}*|wyślij\p{L}*|zeig\p{L}*|schick\p{L}*)\s+(?:мені|me|mi|mir)?\s*)?(?:the\s+|a\s+)?(?:фото\p{L}*|фотк\p{L}*|зображенн\p{L}*|photo\p{L}*|picture\p{L}*|image\p{L}*|zdję\p{L}*|fot\p{L}*|bild\p{L}*)\s*[?!.,]*$/iu;
 
 const supportIntentPattern = /(зв['’]?яж\p{L}*|з'єдн\p{L}*|менеджер\p{L}*|оператор\p{L}*|жив\p{L}*\s+людин\p{L}*|contact\p{L}*\s+(a\s+)?(manager|person|human)|speak\p{L}*\s+(to|with)\s+(a\s+)?(manager|person|human)|manager\p{L}*|konsultant\p{L}*|pracownik\p{L}*|mitarbeiter\p{L}*|berater\p{L}*)/iu;
 
@@ -47,6 +49,12 @@ export const extractRecentProductCode = (history = '') => {
 };
 
 export const isPhotoRequest = (text = '') => photoIntentPattern.test(String(text));
+
+export const isRecentProductPhotoRequest = (text = '') => {
+  const value = String(text).trim();
+  return isPhotoRequest(value)
+    && (recentProductReferencePattern.test(value) || barePhotoRequestPattern.test(value));
+};
 
 export const isSupportRequest = (text = '') => supportIntentPattern.test(String(text));
 
