@@ -1,6 +1,6 @@
 const productCodePattern = /\b[\p{L}\d]{1,16}(?:[-_][\p{L}\d]{1,16})+\b/giu;
 
-const catalogIntentPattern = /(порад\p{L}*|підбер\p{L}*|знайд\p{L}*|покаж\p{L}*|фігур\p{L}*|товар\p{L}*|виріб|вироби|подар\p{L}*|recommend\p{L}*|suggest\p{L}*|find\p{L}*|show\p{L}*|figur\p{L}*|product\p{L}*|gift\p{L}*|pole\p{L}*|znajd\p{L}*|pokaż\p{L}*|produkt\p{L}*|prezent\p{L}*|empfehl\p{L}*|such\p{L}*|zeig\p{L}*|geschenk\p{L}*)/iu;
+const catalogIntentPattern = /(порад\p{L}*|порекоменду\p{L}*|підбер\p{L}*|знайд\p{L}*|покаж\p{L}*|фігур\p{L}*|товар\p{L}*|виріб|вироби|подар\p{L}*|recommend\p{L}*|suggest\p{L}*|find\p{L}*|show\p{L}*|figur\p{L}*|product\p{L}*|gift\p{L}*|pole\p{L}*|znajd\p{L}*|pokaż\p{L}*|produkt\p{L}*|prezent\p{L}*|empfehl\p{L}*|such\p{L}*|zeig\p{L}*|geschenk\p{L}*)/iu;
 
 const photoIntentPattern = /(фото\p{L}*|фотк\p{L}*|зображенн\p{L}*|покаж\p{L}*|скинь\p{L}*|надішл\p{L}*|вигляда\p{L}*|photo\p{L}*|picture\p{L}*|image\p{L}*|show\p{L}*|send\p{L}*|look\p{L}*|zdję\p{L}*|fot\p{L}*|pokaż\p{L}*|wyślij\p{L}*|bild\p{L}*|foto\p{L}*|zeig\p{L}*|schick\p{L}*|aussieh\p{L}*)/iu;
 const recentProductReferencePattern = /((?<![\p{L}\d_])(?:цей|ця|це|ці|цього|цієї|цю|його|її|того|тієї|this|that|it|its|previous|last|same|jego|jej|sein|ihr)(?![\p{L}\d_])|попередн\p{L}*|останн\p{L}*|poprzedn\p{L}*|dies\p{L}*|vorherig\p{L}*)/iu;
@@ -79,7 +79,7 @@ export const normalizeCatalogQuery = (text = '') => {
   const normalized = original
     .replace(/^(?:прикольно|круто|добре|гаразд|ок(?:ей)?)\s*[,!.]?\s*/iu, '')
     .replace(/^(?:а\s+)?(?:чи\s+)?(?:у\s+вас\s+)?(?:є|маєте)\s+(?:у\s+вас\s+)?(?:щось|що-небудь|якісь?)?\s*(?:з|із|зі|на\s+кшталт)?\s*/iu, '')
-    .replace(/^(?:порад\p{L}*|підбер\p{L}*|порекоменду\p{L}*|покаж\p{L}*|знайд\p{L}*)\s*/iu, '')
+    .replace(/^(?:порад\p{L}*|підбер\p{L}*|порекоменду\p{L}*|покаж\p{L}*|знайд\p{L}*)\s*[,!.-]?\s*(?:будь\s+ласка\s*[,!.-]?\s*)?/iu, '')
     .replace(/^(?:я\s+)?(?:хочу|хотів(?:ла)?(?:\s+би)?|шукаю|потрібн\p{L}*)\s*/iu, '')
     .replace(/^(?:мене\s+)?(?:тепер\s+)?(?:цікавить|цікавлять)\s*/iu, '')
     .replace(/^(?:do\s+you\s+have|have\s+you\s+got|show|recommend|suggest|find)\s+(?:anything\s+|something\s+|any\s+)?(?:with|like)?\s*/iu, '')
