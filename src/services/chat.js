@@ -71,11 +71,41 @@ export const getRecentPhotoSearchContext = async (userId, maxAgeMs = 30 * 60_000
   if (error) throw error;
   if (!data || Date.now() - new Date(data.created_at).getTime() > maxAgeMs) return null;
   try {
-    return JSON.parse(data.text.slice('photo-search:'.length));
+    return { ...JSON.parse(data.text.slice('photo-search:'.length)), createdAt: data.created_at };
   } catch {
     return null;
   }
 };
+
+export const getRecentTextSearchContext = async (userId, maxAgeMs = 30 * 60_000) => {
+  const sessionStartedAt = await getLatestSessionStart(userId);
+  let query = supabase.from('assistant_messages')
+    .select('text,created_at')
+    .eq('user_id', userId)
+    .eq('direction', 'system')
+    .like('text', 'text-search:%');
+  if (sessionStartedAt) query = query.gte('created_at', sessionStartedAt);
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || Date.now() - new Date(data.created_at).getTime() > maxAgeMs) return null;
+  try {
+    return { ...JSON.parse(data.text.slice('text-search:'.length)), createdAt: data.created_at };
+  } catch {
+    return null;
+  }
+};
+
+export const recordTextSearchContext = ({ userId, telegramChatId, language, query, shownIds }) => recordMessage({
+  userId,
+  telegramChatId,
+  direction: 'system',
+  senderType: 'system',
+  text: `text-search:${JSON.stringify({ query, shownIds })}`,
+  language,
+});
 
 export const recordPhotoSearchContext = async ({ userId, telegramChatId, language, candidateIds, shownCount }) => recordMessage({
   userId,

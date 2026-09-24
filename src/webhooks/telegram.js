@@ -38,9 +38,11 @@ import {
   findSupportRequestByAdminMessage,
   getRecentHistory,
   getRecentPhotoSearchContext,
+  getRecentTextSearchContext,
   getUserMode,
   recordMessage,
   recordPhotoSearchContext,
+  recordTextSearchContext,
   setUserLanguage,
   startConversationSession,
 } from '../services/chat.js';
@@ -470,9 +472,50 @@ const handleCustomerMessage = async (message) => {
     return;
   }
 
-  const photoFollowUp = isPhotoAlternativeRequest(text) || isVisualRefinementRequest(text);
-  const photoContext = photoFollowUp ? await getRecentPhotoSearchContext(user.id) : null;
-  if (photoContext && isPhotoAlternativeRequest(text)) {
+  const alternativeRequest = isPhotoAlternativeRequest(text);
+  const photoFollowUp = alternativeRequest || isVisualRefinementRequest(text);
+  const [photoContext, textContext] = await Promise.all([
+    photoFollowUp ? getRecentPhotoSearchContext(user.id) : null,
+    alternativeRequest ? getRecentTextSearchContext(user.id) : null,
+  ]);
+  const latestAlternativeContext = photoContext && textContext
+    ? (new Date(photoContext.createdAt) > new Date(textContext.createdAt) ? 'photo' : 'text')
+    : photoContext ? 'photo' : textContext ? 'text' : null;
+
+  if (alternativeRequest && latestAlternativeContext === 'text') {
+    const shownIds = Array.isArray(textContext.shownIds) ? textContext.shownIds.map(Number) : [];
+    let alternatives;
+    try {
+      alternatives = await recommend(textContext.query, { excludeIds: shownIds });
+    } catch {
+      const reply = temporaryUnavailableText(user.language);
+      await sendMessage(chatId, reply);
+      await recordMessage({ userId: user.id, telegramChatId: chatId, direction: 'outbound', senderType: 'assistant', text: reply, language: user.language });
+      return;
+    }
+    const reply = alternatives.length
+      ? localizedText(user.language, {
+        uk: 'Ось ще варіанти за вашим запитом:', en: 'Here are more options for your request:', pl: 'Oto kolejne opcje dla Twojego zapytania:', de: 'Hier sind weitere passende Optionen:',
+      })
+      : localizedText(user.language, {
+        uk: 'Я вже показав найближчі відповідні варіанти. Спробуйте уточнити колір, форму або розмір.', en: 'I have already shown the closest matching options. Try specifying a color, shape, or size.', pl: 'Pokazałem już najbliższe pasujące opcje. Spróbuj określić kolor, kształt lub rozmiar.', de: 'Ich habe bereits die ähnlichsten Optionen gezeigt. Nennen Sie bitte Farbe, Form oder Größe.',
+      });
+    await sendMessage(chatId, reply);
+    if (alternatives.length) await sendProductCards(chatId, alternatives);
+    await recordMessage({ userId: user.id, telegramChatId: chatId, direction: 'outbound', senderType: 'assistant', text: reply, language: user.language });
+    if (alternatives.length) {
+      await recordTextSearchContext({
+        userId: user.id,
+        telegramChatId: chatId,
+        language: user.language,
+        query: textContext.query,
+        shownIds: [...new Set([...shownIds, ...alternatives.map((product) => Number(product.product_id ?? product.id))])],
+      });
+    }
+    return;
+  }
+
+  if (photoContext && alternativeRequest && latestAlternativeContext === 'photo') {
     const candidateIds = Array.isArray(photoContext.candidateIds) ? photoContext.candidateIds.map(Number) : [];
     const shownCount = Number(photoContext.shownCount) || 0;
     const nextIds = candidateIds.slice(shownCount, shownCount + 3);
@@ -541,10 +584,11 @@ const handleCustomerMessage = async (message) => {
   }
 
   const wantsCatalog = shouldSearchCatalog(text, mode, history);
+  const catalogQuery = !exactProduct && wantsCatalog ? buildCatalogQuery(text, history) : null;
   let products = exactProduct ? [exactProduct] : [];
   if (!exactProduct && wantsCatalog) {
     try {
-      products = await recommend(buildCatalogQuery(text, history), {
+      products = await recommend(catalogQuery, {
         excludeIds: photoContext?.candidateIds || [],
       });
     } catch {
@@ -585,7 +629,18 @@ const handleCustomerMessage = async (message) => {
     }
   }
   await sendMessage(chatId, escapeHtml(reply));
-  if (wantsCatalog && products.length) await sendProductCards(chatId, products);
+  if (wantsCatalog && products.length) {
+    await sendProductCards(chatId, products);
+    if (!exactProduct) {
+      await recordTextSearchContext({
+        userId: user.id,
+        telegramChatId: chatId,
+        language: user.language,
+        query: catalogQuery,
+        shownIds: products.map((product) => Number(product.product_id ?? product.id)),
+      });
+    }
+  }
   await recordMessage({
     userId: user.id,
     telegramChatId: chatId,
